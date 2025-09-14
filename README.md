@@ -1,1 +1,443 @@
-# Studydemo
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Aditya's Demo App</title>
+<style>
+  :root{
+    --width:390px; --height:844px;
+    --bg:#f4f6f8;
+    --white:#ffffff;
+    --card-border:#e6e6e6;
+    --accent:#007aff;
+    --correct:#28a745;
+    --wrong:#dc3545;
+  }
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#eef2ff,#fafafa);
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  /* phone frame */
+  .phone{
+    width:var(--width); height:var(--height);
+    background:var(--bg); border-radius:36px; box-shadow:0 18px 40px rgba(20,20,40,0.12);
+    overflow:hidden; position:relative; border:10px solid rgba(0,0,0,0.03);
+    display:flex; flex-direction:column;
+  }
+
+  /* status bar */
+  .status{
+    height:44px; display:flex; align-items:center; justify-content:center; position:relative;
+    background:transparent;
+  }
+  .status .left, .status .right{ position:absolute; top:10px; font-size:13px; color:#111; }
+  .status .left { left:12px; }
+  .status .right { right:12px; }
+  .dots { position:absolute; right:46px; top:14px; display:flex; gap:4px; }
+  .dot { width:6px; height:6px; border-radius:50%; background:#333; opacity:0.9; }
+
+  /* header */
+  .header { padding:6px 12px 10px; text-align:center; }
+  .app-title { font-weight:800; font-size:20px; color:#111; }
+  .app-sub { font-size:11px; color:#444; margin-top:2px; opacity:0.95; }
+
+  /* main screen area */
+  .screen { flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:12px; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px; }
+  .card{
+    background:var(--white); border-radius:16px; padding:14px; text-align:center; cursor:pointer;
+    border:2px solid var(--card-border); box-shadow:0 6px 10px rgba(0,0,0,0.03); transition:transform .12s, box-shadow .12s;
+    user-select:none;
+  }
+  .card:active{ transform:translateY(3px); }
+  .emoji { font-size:44px; margin-top:6px; }
+  .card-title { font-weight:800; margin-top:8px; font-size:16px; color:#111; }
+  .card-sub { font-size:12px; color:#222; margin-top:6px; background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent); padding:6px 8px; border-radius:10px; display:inline-block; }
+
+  /* lessons list */
+  .nav-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .back { color:var(--accent); font-weight:700; cursor:pointer; }
+
+  .lessons { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .lesson-item { background:var(--white); padding:12px; border-radius:12px; border:1px solid var(--card-border); cursor:pointer; }
+
+  /* MCQ area */
+  .mcq-container { display:flex; flex-direction:column; gap:12px; }
+  .question { font-weight:800; font-size:18px; color:#111; margin-top:6px; line-height:1.3; }
+  .options { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px; }
+  .option {
+    background:var(--white); border:1px solid var(--card-border); padding:12px; border-radius:12px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:700;
+    transition: transform .12s ease, box-shadow .12s ease;
+    user-select:none;
+  }
+  .option:active{ transform:translateY(3px); }
+  .option.correct { background: linear-gradient(180deg, rgba(40,167,69,0.15), rgba(40,167,69,0.06)); border-color: rgba(40,167,69,0.45); color:#065c34; }
+  .option.wrong { background: linear-gradient(180deg, rgba(220,53,69,0.12), rgba(220,53,69,0.04)); border-color: rgba(220,53,69,0.45); color:#7a1f22; }
+
+  /* popup emoji overlay */
+  .emoji-popup {
+    position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); font-size:80px; display:none;
+    pointer-events:none; text-shadow:0 6px 20px rgba(0,0,0,0.12);
+  }
+
+  /* small click pop (✊) */
+  .small-pop {
+    position:absolute; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    left:0; top:0; transform:translate(-50%,-50%) scale(.2); opacity:0.95; border:2px solid rgba(0,0,0,0.14);
+    background:rgba(255,255,255,0.01); transition:transform .45s cubic-bezier(.2,.9,.2,1), opacity .45s;
+    pointer-events:none; font-size:20px;
+  }
+  .small-pop.show { transform:translate(-50%,-50%) scale(8); opacity:0; }
+
+  /* shake animation for correct */
+  @keyframes shake {
+    0% { transform:translateX(0); }
+    10% { transform:translateX(-6px); }
+    30% { transform:translateX(6px); }
+    50% { transform:translateX(-4px); }
+    70% { transform:translateX(4px); }
+    100% { transform:translateX(0); }
+  }
+  .shake { animation: shake .6s cubic-bezier(.36,.07,.19,.97); }
+
+  /* bottom spacing */
+  .footer-space { height:24px; }
+
+  /* button rate */
+  .rate-btn {
+    display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background:#25D366; color:white; border-radius:26px; border:none; font-weight:800; cursor:pointer;
+  }
+
+  /* Responsive small scale */
+  @media (max-width:360px){
+    .phone { transform:scale(.92); }
+  }
+</style>
+</head>
+<body>
+  <div class="phone" id="phone">
+    <div class="status">
+      <div class="left">🔔</div>
+      <div style="font-weight:800">12:30</div>
+      <div class="right">100%</div>
+      <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    </div>
+
+    <div class="header">
+      <div class="app-title">Aditya's Demo app</div>
+      <div class="app-sub">Only name "demo" hai — app ka real name hai, not demo</div>
+    </div>
+
+    <div class="screen" id="screen">
+      <!-- dynamic content injected here -->
+    </div>
+
+    <div class="emoji-popup" id="emojiPopup">✅</div>
+    <div id="popWrap" style="position:absolute; left:0; top:44px; right:0; bottom:0; pointer-events:none;"></div>
+  </div>
+
+<!-- Sounds (web hosted) -->
+<audio id="soundClick" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+<audio id="soundCorrect" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+<audio id="soundWrong" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+
+<script>
+/* -------------------- DATA: subjects, lessons, MCQs (70) -------------------- */
+
+/* Subjects + lessons (kept same as earlier) */
+const subjects = [
+  { name: "English", emoji: "🔤", hindi: "अंग्रेज़ी", lessons: [
+      "Lesson 1 - A Letter to God",
+      "Lesson 2 - Nelson Mandela",
+      "Lesson 3 - Fire and Ice",
+      "Lesson 4 - A Tiger in the Zoo",
+      "Lesson 5 - Two Stories about Flying"
+    ]},
+  { name: "Science", emoji: "🔬", hindi: "विज्ञान", lessons: [
+      "Lesson 1 - Chemical Reactions",
+      "Lesson 2 - Acids and Bases",
+      "Lesson 3 - Metals and Non-metals",
+      "Lesson 4 - Carbon and its Compounds"
+    ]},
+  { name: "Math", emoji: "🧮", hindi: "गणित", lessons: [
+      "Lesson 1 - Real Numbers",
+      "Lesson 2 - Polynomials",
+      "Lesson 3 - Linear Equations",
+      "Lesson 4 - Quadratic Equations"
+    ]},
+  { name: "Social Studies", emoji: "🌍", hindi: "सामाजिक अध्ययन", lessons: [
+      "Lesson 1 - The Rise of Nationalism",
+      "Lesson 2 - Nationalism in India",
+      "Lesson 3 - The Making of a Global World",
+      "Lesson 4 - The Age of Industrialization"
+    ]},
+  { name: "MCQs (All CHPs)", emoji: "📚", hindi: "सभी प्रश्नोत्तरी" }
+];
+
+/* 70 MCQs array — options A–D, ans is zero-based index */
+const mcqs = [
+  // EASY 1-20
+  { q: "Who is the main character of the story 'A Letter to God'?", options:["Pedro","Lencho","Gregorio","Miguel"], ans:1 },
+  { q: "Who is the author of 'A Letter to God'?", options:["O. Henry","Gregorio López y Fuentes","Premchand","R. K. Narayan"], ans:1 },
+  { q: "What crop was Lencho growing?", options:["Wheat","Rice","Corn (maize)","Sugarcane"], ans:2 },
+  { q: "Lencho lived where?", options:["In a big town","On a low hill in a valley","In a desert","In the forest"], ans:1 },
+  { q: "What did Lencho eagerly hope for?", options:["Sunshine","Rain","Wind","Snow"], ans:1 },
+  { q: "How did Lencho describe the raindrops at first?", options:["As pearls","As silver and gold coins","As stars","As salt"], ans:1 },
+  { q: "What ruined Lencho’s crop?", options:["Drought","Locusts","Hailstorm","Fire"], ans:2 },
+  { q: "How long did the hailstorm last (in story)?", options:["One hour","Two hours","A night","Half a day"], ans:1 },
+  { q: "What did the fields look like after the hailstorm?", options:["Green","White like salt","Flooded","Brown"], ans:1 },
+  { q: "How much money did Lencho ask God for in his letter?", options:["50 pesos","80 pesos","100 pesos","200 pesos"], ans:2 },
+  { q: "To whom did Lencho address the letter?", options:["The President","The Postmaster","God","The Priest"], ans:2 },
+  { q: "What did the postman do with the letter at first?", options:["Threw it away","Laughed and took it to the postmaster","Delivered it to the priest","Kept it"], ans:1 },
+  { q: "How much money did the postmaster and staff collect?", options:["100 pesos","80 pesos","60 pesos","40 pesos"], ans:2 },
+  { q: "How did the postmaster send the money to Lencho?", options:["Money order","Envelope signed 'God'","Messenger","Bank transfer"], ans:1 },
+  { q: "What was Lencho’s reaction when he received the money?", options:["Overjoyed","Angry and suspicious","Neutral","Returned it"], ans:1 },
+  { q: "How much money did Lencho receive?", options:["50 pesos","60 pesos","75 pesos","100 pesos"], ans:1 },
+  { q: "What word did Lencho use for the post office employees?", options:["Friends","Helpers","Crooks","Strangers"], ans:2 },
+  { q: "What was Lencho’s only hope after the hailstorm?", options:["Borrowing money","Selling land","God’s help","Moving away"], ans:2 },
+  { q: "What did Lencho ask God to do in his second letter?", options:["Forgive postmaster","Send remaining money directly","Send rain","Send a priest"], ans:1 },
+  { q: "Which of the following best describes Lencho’s character?", options:["Rich and cruel","Simple and deeply faithful","Educated and cunning","Lazy and careless"], ans:1 },
+
+  // MEDIUM 21-45
+  { q: "What is the central theme of the story?", options:["Greed","Faith and innocence","Industrial progress","Revenge"], ans:1 },
+  { q: "Which literary device is used when rain is called 'silver and gold coins'?", options:["Simile","Metaphor","Personification","Irony"], ans:1 }, // earlier said metaphor but options had simile; original answer said metaphor. Keep as metaphor -> index 1 is Metaphor; adjust: options: Simile(0) Metaphor(1)...
+  { q: "The hailstones are described metaphorically as:", options:["Frozen pearls","Burning coals","Golden leaves","Bitter herbs"], ans:0 },
+  { q: "Why did the postmaster help Lencho?", options:["To avoid trouble","He was moved by Lencho’s faith","For reward","To gain fame"], ans:1 },
+  { q: "Which best explains the postmaster’s action of signing 'God' on the envelope?", options:["Mockery","To deceive Lencho","To keep Lencho’s belief intact","Administrative rule"], ans:2 },
+  { q: "What does the letter itself symbolize in the story?", options:["Legal proof","Faith and communication with divine","Political power","Wealth"], ans:1 },
+  { q: "Which statement is true about the postmaster?", options:["He was corrupt","He was indifferent","He was kind and humane","He was Lencho’s relative"], ans:2 },
+  { q: "What tone best describes the story?", options:["Angry and bitter","Ironic yet compassionate","Triumphant","Melodramatic"], ans:1 },
+  { q: "What did Lencho compare the small raindrops to?", options:["Diamonds","Gold coins","Tears","Fish scales"], ans:1 },
+  { q: "What is the immediate effect of the hail on Lencho’s family?", options:["They sell the house","They will have no food or seed","They move to town","They celebrate"], ans:1 },
+  { q: "Why did Lencho prefer writing to God rather than asking neighbors for help?", options:["He distrusted neighbors","He trusted God absolutely","He wanted publicity","He couldn’t speak"], ans:1 },
+  { q: "Which of these is NOT a theme of the story?", options:["Faith","Human kindness","Corruption of postal system","Man vs nature"], ans:2 },
+  { q: "The story is mainly an example of which genre?", options:["Science fiction","Realistic fiction","Fantasy","Historical epic"], ans:1 },
+  { q: "Lencho’s family members are shown as:", options:["Indifferent","Leaders","Cooperative and simple","Wealthy"], ans:2 },
+  { q: "Which phrase best captures the author’s attitude toward Lencho?", options:["Mocking contempt","Respectful irony","Fierce condemnation","Complete disbelief"], ans:1 },
+  { q: "When Lencho wrote the letter, what did he include besides the amount?", options:["A bank account","A list of sins","Reasons for needing the money","Names of postmasters"], ans:2 },
+  { q: "What does Lencho’s calling post office employees 'crooks' reveal about him?", options:["He is spiteful","He is suspicious of all humans except God","He is educated","He is cruel"], ans:1 },
+  { q: "Which is the best title alternative that would still fit the story?", options:["The Hailstorm","The Postmaster’s Trick","Faith and Misunderstanding","The Rich Farmer"], ans:2 },
+  { q: "The story’s setting (rural valley) primarily helps to show:", options:["Urban problems","Man’s dependence on nature","Technological advancement","Political unrest"], ans:1 },
+  { q: "Which of the following did the postmaster NOT do?", options:["Laugh at the letter","Collect money","Sign envelope 'God'","Tell Lencho the truth about contributors"], ans:3 },
+  { q: "Lencho’s belief that God would send money shows:", options:["Practical planning","Superstition only","Deep, unquestioning faith","Political cunning"], ans:2 },
+  { q: "Which object in the story is a symbol of hope?", options:["The mailbox","The envelope","The plough","The post office building"], ans:1 },
+  { q: "What is the mood when Lencho first sees rain?", options:["Gloomy","Joyful and relieved","Fearful","Angry"], ans:1 },
+  { q: "Why does the author present the postmaster sympathetically rather than satirically?", options:["To show government efficiency","To highlight human kindness","To mock Lencho","To promote the post office"], ans:1 },
+  { q: "Which event triggers the entire plot?", options:["Lencho’s letter","The hailstorm","Postmaster’s decision","Arrival of rain"], ans:1 },
+
+  // TOUGH 46-70
+  { q: "Which type of irony is most prominent in the story’s ending?", options:["Verbal irony","Dramatic irony","Situational irony","Cosmic irony"], ans:1 },
+  { q: "Why is Lencho’s faith described as 'admirable but problematic'?", options:["It is aggressive","It makes him foolishly distrust humans who helped him","It brings him wealth","It is politically motivated"], ans:1 },
+  { q: "Which broader truth about human nature does the story illustrate?", options:["People do not help others","Simple faith can both console and blind","Institutions are always corrupt","Nature favors the rich"], ans:1 },
+  { q: "If the postmaster had written the truth on the envelope, what is the likely effect on Lencho?", options:["He would have refused","He might have been disillusioned","He would not notice","He would have left town"], ans:1 },
+  { q: "Which word best describes the postmaster’s moral choice?", options:["Cowardly","Altruistic","Selfish","Indifferent"], ans:1 },
+  { q: "What does the hailstorm symbolically represent in human terms?", options:["Divine approval","Sudden misfortune beyond control","Social injustice","Personal enemies"], ans:1 },
+  { q: "Which phrase best defines the story’s use of irony?", options:["The universe laughs first","The poor are always dishonest","Good intentions lead to unexpected outcomes","Power corrupts"], ans:2 },
+  { q: "How does the author balance humor and pathos in the story?", options:["By mocking Lencho throughout","By showing Lencho’s innocence gently along with the postmaster’s kindness","By making it a tragedy","By using long speeches"], ans:1 },
+  { q: "Which character’s perspective is NOT directly given in the story?", options:["Lencho’s","Postmaster’s","Post office employees’ inner thoughts","Lencho’s wife’s feelings"], ans:2 },
+  { q: "The author’s primary sympathy in the story is with:", options:["The post office","Lencho and his faith","Government officials","Wealthy landowners"], ans:1 },
+  { q: "Why might some readers criticize Lencho’s reaction?", options:["For being ungrateful and unfair to helpers","For being too clever","For being cruel","For being violent"], ans:0 },
+  { q: "If the story were set in a modern city, what element would be hardest to preserve?", options:["The hailstorm","Lencho’s absolute faith in direct letter-to-God communication","Postmaster’s kindness","Need for seeds"], ans:1 },
+  { q: "Which literary device is at play when the author lets readers know facts Lencho doesn’t?", options:["Suspense","Dramatic irony","Foreshadowing","Allegory"], ans:1 },
+  { q: "How does the story comment on human institutions (like post office)?", options:["It condemns the whole institution","It shows individuals within institutions can be humane","It shows institutions are efficient","It ignores institutions entirely"], ans:1 },
+  { q: "Which of these is a valid moral reading of the story?", options:["Never trust anyone","Faith is everything, ignore humans","Human kindness matters even if imperfect","The poor are always right"], ans:2 },
+  { q: "Which quality of Lencho makes him a sympathetic figure despite his error?", options:["His cunning","His blind, child-like faith","His wealth","His education"], ans:1 },
+  { q: "Which is the best critique of the ending from a realist POV?", options:["It’s unrealistic that postmaster would help","It’s reasonable that people would conspire","It’s likely Lencho would accept partial help gratefully","It’s an accurate portrayal of human ingratitude"], ans:2 },
+  { q: "How does author’s presentation of the postmaster enhance the story’s theme?", options:["By showing hypocrisy","By showing compassion that contrasts with Lencho’s misunderstanding","By making him villainous","By ignoring him"], ans:1 },
+  { q: "Which phrase best captures the final ironic twist?", options:["Help returns as betrayal in perception","God punishes the faithful","Nature rewards the corrupt","Men always help each other"], ans:0 },
+  { q: "What is the lasting lesson a reader might take away about faith?", options:["Faith is a substitute for effort","Faith can console but may blind one to human goodness","Faith always brings material reward","Faith is foolishness"], ans:1 }
+];
+
+/* -------------------- APP STATE -------------------- */
+const screen = document.getElementById('screen');
+const emojiPopup = document.getElementById('emojiPopup');
+const popWrap = document.getElementById('popWrap');
+const soundClick = document.getElementById('soundClick');
+const soundCorrect = document.getElementById('soundCorrect');
+const soundWrong = document.getElementById('soundWrong');
+
+let state = {
+  view: 'home', // 'home' | 'lessons' | 'mcq'
+  subjectIndex: null,
+  mcqIndex: 0,
+  answered: false
+};
+
+/* -------------------- Utility UI helpers -------------------- */
+function createPop(x,y,emoji){
+  const el = document.createElement('div');
+  el.className = 'small-pop';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.innerText = emoji;
+  popWrap.appendChild(el);
+  // animate
+  requestAnimationFrame(()=> el.classList.add('show'));
+  setTimeout(()=> el.remove(), 600);
+}
+
+function showEmojiPopup(emoji){
+  emojiPopup.innerText = emoji;
+  emojiPopup.style.display = 'block';
+  setTimeout(()=> emojiPopup.style.display = 'none', 800);
+}
+
+/* -------------------- Render Views -------------------- */
+function renderHome(){
+  state.view = 'home';
+  let html = `<div style="padding:8px 4px 0"><h2 style="margin:6px 0 0; text-align:center">Aditya's Demo app</h2>
+    <div style="text-align:center; font-size:12px; color:#444; margin-bottom:8px">Only name "demo" hai — real name app ka alag hai</div>
+    <div class="grid">`;
+  subjects.forEach((s,i)=>{
+    html += `<div class="card" onclick="onCardClick(${i}, event)">
+      <div class="emoji">${s.emoji}</div>
+      <div class="card-title">${s.name}</div>
+      <div class="card-sub">${s.hindi}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  screen.innerHTML = html;
+}
+
+function onCardClick(index, ev){
+  // small pop + click sound
+  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
+  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
+
+  const s = subjects[index];
+  if(s.name === 'MCQs (All CHPs)'){
+    // start MCQs
+    state.mcqIndex = 0;
+    state.answered = false;
+    renderMCQ();
+    return;
+  }
+  state.view = 'lessons';
+  state.subjectIndex = index;
+  let html = `<div class="nav-row"><div class="back" onclick="renderHome()">← Back</div>
+              <div style="flex:1; text-align:center; font-weight:800">${s.emoji} ${s.name}</div></div>
+              <div class="lessons">`;
+  s.lessons.forEach(l=>{
+    html += `<div class="lesson-item" onclick="onLessonClick('${escapeHtml(l)}', event)">${l}</div>`;
+  });
+  html += `</div>`;
+  screen.innerHTML = html;
+}
+
+function onLessonClick(lesson, ev){
+  // small pop + click sound
+  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
+  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
+
+  // For now lesson view just shows placeholder and back
+  let html = `<div class="nav-row"><div class="back" onclick="renderHome()">← Home</div>
+              <div style="flex:1; text-align:center; font-weight:800">${lesson}</div></div>
+              <div style="margin-top:12px; padding:8px; color:#333;">
+                <div style="font-weight:700; margin-bottom:8px">Lessons & MCQs</div>
+                <div style="margin-bottom:10px">Abhi tum baad me lesson content doge — yeh jagah par questions/MCQs show karne ka option milega.</div>
+                <div style="display:flex; gap:10px;">
+                  <button onclick="startMcqFromLesson(event)" style="padding:8px 12px; border-radius:10px; border:1px solid var(--card-border); cursor:pointer">Open MCQs</button>
+                  <button onclick="renderHome()" style="padding:8px 12px; border-radius:10px; border:1px solid var(--card-border); cursor:pointer">Home</button>
+                </div>
+              </div>`;
+  screen.innerHTML = html;
+}
+
+function startMcqFromLesson(ev){
+  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
+  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
+  state.mcqIndex = 0; state.answered = false; renderMCQ();
+}
+
+/* -------------------- MCQ view -------------------- */
+function renderMCQ(){
+  state.view = 'mcq';
+  const idx = state.mcqIndex;
+  if(idx >= mcqs.length){
+    // finished
+    screen.innerHTML = `<div style="text-align:center; padding:18px">
+      <h2>Quiz Completed 🎉</h2>
+      <p style="color:#333">Shabash! Aapne sabhi sawaal dekh liye hain.</p>
+      <div style="margin-top:12px">
+        <button class="rate-btn" onclick="window.open('https://wa.me/919329800917?text=I%20liked%20this%20app%20very%20much%20for%20study%20thanks%20Aditya%20for%20making%20this%20app%20⭐⭐⭐⭐⭐','_blank')">
+          <span style="font-size:18px">😊</span> Rate me on WhatsApp
+        </button>
+      </div>
+      <div style="margin-top:18px"><button onclick="renderHome()" style="padding:8px 12px; border-radius:8px; border:1px solid var(--card-border)">← Home</button></div>
+    </div>`;
+    return;
+  }
+  const q = mcqs[idx];
+  let html = `<div class="nav-row"><div class="back" onclick="renderHome()">← Home</div>
+    <div style="flex:1; text-align:center; font-weight:800">MCQs (All CHPs)</div></div>
+    <div class="mcq-container">
+      <div class="question">Q${idx+1}. ${escapeHtml(q.q)}</div>
+      <div class="options">`;
+  q.options.forEach((opt,i)=>{
+    html += `<div class="option" id="opt-${i}" onclick="onSelectOption(${i}, event)">${String.fromCharCode(65+i)}. ${escapeHtml(opt)}</div>`;
+  });
+  html += `</div></div><div class="footer-space"></div>`;
+  screen.innerHTML = html;
+}
+
+/* Handle option click */
+function onSelectOption(i, ev){
+  if(state.answered) return;
+  state.answered = true;
+  // small pop
+  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
+  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
+
+  const q = mcqs[state.mcqIndex];
+  const opts = document.querySelectorAll('.option');
+  const chosen = document.getElementById('opt-'+i);
+
+  if(i === q.ans){
+    // correct
+    chosen.classList.add('correct');
+    // shake effect
+    chosen.classList.add('shake');
+    showEmojiPopup('✅');
+    // sound
+    soundCorrect.currentTime = 0; soundCorrect.play().catch(()=>{});
+  } else {
+    // wrong
+    chosen.classList.add('wrong');
+    // mark wrong shake (optional)
+    chosen.classList.add('shake');
+    showEmojiPopup('❌');
+    soundWrong.currentTime = 0; soundWrong.play().catch(()=>{});
+  }
+
+  // auto next after delay
+  setTimeout(()=>{
+    state.mcqIndex++;
+    state.answered = false;
+    renderMCQ();
+  }, 1600);
+}
+
+/* -------------------- helpers -------------------- */
+function escapeHtml(s){
+  if(!s) return '';
+  return s.replace(/[&<>"']/g, (m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* -------------------- Init -------------------- */
+renderHome();
+
+/* Optional: keyboard left/right for dev convenience */
+document.addEventListener('keydown', (e)=>{
+  if(state.view==='mcq'){
+    if(e.key==='ArrowRight'){ state.mcqIndex = Math.min(mcqs.length, state.mcqIndex+1); renderMCQ(); }
+    if(e.key==='ArrowLeft'){ state.mcqIndex = Math.max(0, state.mcqIndex-1); renderMCQ(); }
+  }
+});
+</script>
+</body>
+</html>
