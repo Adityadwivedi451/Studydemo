@@ -1,443 +1,626 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Aditya's Demo App</title>
-<style>
-  :root{
-    --width:390px; --height:844px;
-    --bg:#f4f6f8;
-    --white:#ffffff;
-    --card-border:#e6e6e6;
-    --accent:#007aff;
-    --correct:#28a745;
-    --wrong:#dc3545;
-  }
-  body{
-    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(180deg,#eef2ff,#fafafa);
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  }
-
-  /* phone frame */
-  .phone{
-    width:var(--width); height:var(--height);
-    background:var(--bg); border-radius:36px; box-shadow:0 18px 40px rgba(20,20,40,0.12);
-    overflow:hidden; position:relative; border:10px solid rgba(0,0,0,0.03);
-    display:flex; flex-direction:column;
-  }
-
-  /* status bar */
-  .status{
-    height:44px; display:flex; align-items:center; justify-content:center; position:relative;
-    background:transparent;
-  }
-  .status .left, .status .right{ position:absolute; top:10px; font-size:13px; color:#111; }
-  .status .left { left:12px; }
-  .status .right { right:12px; }
-  .dots { position:absolute; right:46px; top:14px; display:flex; gap:4px; }
-  .dot { width:6px; height:6px; border-radius:50%; background:#333; opacity:0.9; }
-
-  /* header */
-  .header { padding:6px 12px 10px; text-align:center; }
-  .app-title { font-weight:800; font-size:20px; color:#111; }
-  .app-sub { font-size:11px; color:#444; margin-top:2px; opacity:0.95; }
-
-  /* main screen area */
-  .screen { flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:12px; }
-
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px; }
-  .card{
-    background:var(--white); border-radius:16px; padding:14px; text-align:center; cursor:pointer;
-    border:2px solid var(--card-border); box-shadow:0 6px 10px rgba(0,0,0,0.03); transition:transform .12s, box-shadow .12s;
-    user-select:none;
-  }
-  .card:active{ transform:translateY(3px); }
-  .emoji { font-size:44px; margin-top:6px; }
-  .card-title { font-weight:800; margin-top:8px; font-size:16px; color:#111; }
-  .card-sub { font-size:12px; color:#222; margin-top:6px; background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent); padding:6px 8px; border-radius:10px; display:inline-block; }
-
-  /* lessons list */
-  .nav-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-  .back { color:var(--accent); font-weight:700; cursor:pointer; }
-
-  .lessons { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
-  .lesson-item { background:var(--white); padding:12px; border-radius:12px; border:1px solid var(--card-border); cursor:pointer; }
-
-  /* MCQ area */
-  .mcq-container { display:flex; flex-direction:column; gap:12px; }
-  .question { font-weight:800; font-size:18px; color:#111; margin-top:6px; line-height:1.3; }
-  .options { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px; }
-  .option {
-    background:var(--white); border:1px solid var(--card-border); padding:12px; border-radius:12px;
-    cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:700;
-    transition: transform .12s ease, box-shadow .12s ease;
-    user-select:none;
-  }
-  .option:active{ transform:translateY(3px); }
-  .option.correct { background: linear-gradient(180deg, rgba(40,167,69,0.15), rgba(40,167,69,0.06)); border-color: rgba(40,167,69,0.45); color:#065c34; }
-  .option.wrong { background: linear-gradient(180deg, rgba(220,53,69,0.12), rgba(220,53,69,0.04)); border-color: rgba(220,53,69,0.45); color:#7a1f22; }
-
-  /* popup emoji overlay */
-  .emoji-popup {
-    position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); font-size:80px; display:none;
-    pointer-events:none; text-shadow:0 6px 20px rgba(0,0,0,0.12);
-  }
-
-  /* small click pop (✊) */
-  .small-pop {
-    position:absolute; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    left:0; top:0; transform:translate(-50%,-50%) scale(.2); opacity:0.95; border:2px solid rgba(0,0,0,0.14);
-    background:rgba(255,255,255,0.01); transition:transform .45s cubic-bezier(.2,.9,.2,1), opacity .45s;
-    pointer-events:none; font-size:20px;
-  }
-  .small-pop.show { transform:translate(-50%,-50%) scale(8); opacity:0; }
-
-  /* shake animation for correct */
-  @keyframes shake {
-    0% { transform:translateX(0); }
-    10% { transform:translateX(-6px); }
-    30% { transform:translateX(6px); }
-    50% { transform:translateX(-4px); }
-    70% { transform:translateX(4px); }
-    100% { transform:translateX(0); }
-  }
-  .shake { animation: shake .6s cubic-bezier(.36,.07,.19,.97); }
-
-  /* bottom spacing */
-  .footer-space { height:24px; }
-
-  /* button rate */
-  .rate-btn {
-    display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background:#25D366; color:white; border-radius:26px; border:none; font-weight:800; cursor:pointer;
-  }
-
-  /* Responsive small scale */
-  @media (max-width:360px){
-    .phone { transform:scale(.92); }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECURITY BREACH DETECTED</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        
+        body {
+            background-color: #000;
+            color: #0f0;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+            cursor: none;
+        }
+        
+        .scan-line {
+            position: absolute;
+            height: 2px;
+            width: 100%;
+            background: linear-gradient(to right, rgba(0, 255, 0, 0), rgba(0, 255, 0, 0.8), rgba(0, 255, 0, 0));
+            top: 0;
+            animation: scan 3s linear infinite;
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.7);
+        }
+        
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .container {
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 1px solid #0f0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .glitch {
+            font-size: 28px;
+            font-weight: bold;
+            text-transform: uppercase;
+            position: relative;
+            text-shadow: 0.05em 0 0 rgba(255, 0, 0, 0.75), -0.025em -0.05em 0 rgba(0, 255, 0, 0.75), 0.025em 0.05em 0 rgba(0, 0, 255, 0.75);
+            animation: glitch 2s infinite;
+            color: #ff0000;
+        }
+        
+        .terminal {
+            background-color: rgba(0, 20, 0, 0.8);
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            padding: 15px;
+            flex-grow: 1;
+            overflow-y: auto;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            position: relative;
+        }
+        
+        .terminal-line {
+            margin-bottom: 5px;
+            line-height: 1.4;
+            opacity: 0;
+            animation: fadeIn 0.1s forwards;
+        }
+        
+        .prompt {
+            color: #0f0;
+            font-weight: bold;
+        }
+        
+        .command {
+            color: #0af;
+        }
+        
+        .output {
+            color: #0f0;
+        }
+        
+        .warning {
+            color: #ff0;
+            font-weight: bold;
+        }
+        
+        .danger {
+            color: #f00;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 0, 0, 0.7);
+        }
+        
+        .progress-container {
+            margin-top: 20px;
+            background-color: rgba(0, 30, 0, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            height: 20px;
+            border: 1px solid #0f0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #0f0, #0c0);
+            transition: width 0.5s ease;
+        }
+        
+        .blink {
+            animation: blink 0.7s infinite;
+        }
+        
+        .access-granted {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s;
+        }
+        
+        .access-text {
+            font-size: 48px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        .flashing {
+            animation: flash 0.3s infinite;
+        }
+        
+        .fake-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+            border: 2px solid #f00;
+            border-radius: 10px;
+            padding: 20px;
+            width: 300px;
+            z-index: 2000;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            display: none;
+        }
+        
+        .popup-title {
+            color: #f00;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .popup-content {
+            color: #fff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .popup-buttons {
+            display: flex;
+            justify-content: space-around;
+        }
+        
+        .popup-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .popup-deny {
+            background: #444;
+            color: #fff;
+        }
+        
+        .popup-allow {
+            background: linear-gradient(to bottom, #f00, #900);
+            color: #fff;
+        }
+        
+        .fake-cursor {
+            position: absolute;
+            width: 12px;
+            height: 20px;
+            background: #0f0;
+            z-index: 3000;
+            animation: blink 1s infinite;
+            pointer-events: none;
+        }
+        
+        .exit-message {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #f00;
+            padding: 10px;
+            border-radius: 5px;
+            color: #f00;
+            font-size: 14px;
+            display: none;
+            z-index: 1500;
+        }
+        
+        .remove-hack {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            color: #0f0;
+            font-size: 12px;
+            z-index: 1500;
+            text-align: center;
+        }
+        
+        .remove-hack a {
+            color: #0ff;
+            text-decoration: none;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        
+        @keyframes glitch {
+            0% { text-shadow: 0.05em 0 0 rgba(255, 0, 0, 0.75), -0.05em -0.025em 0 rgba(0, 255, 0, 0.75), -0.025em 0.05em 0 rgba(0, 0, 255, 0.75); }
+            14% { text-shadow: 0.05em 0 0 rgba(255, 0, 0, 0.75), -0.05em -0.025em 0 rgba(0, 255, 0, 0.75), -0.025em 0.05em 0 rgba(0, 0, 255, 0.75); }
+            15% { text-shadow: -0.05em -0.025em 0 rgba(255, 0, 0, 0.75), 0.025em 0.025em 0 rgba(0, 255, 0, 0.75), -0.05em -0.05em 0 rgba(0, 0, 255, 0.75); }
+            49% { text-shadow: -0.05em -0.025em 0 rgba(255, 0, 0, 0.75), 0.025em 0.025em 0 rgba(0, 255, 0, 0.75), -0.05em -0.05em 0 rgba(0, 0, 255, 0.75); }
+            50% { text-shadow: 0.025em 0.05em 0 rgba(255, 0, 0, 0.75), 0.05em 0 0 rgba(0, 255, 0, 0.75), 0 -0.05em 0 rgba(0, 0, 255, 0.75); }
+            99% { text-shadow: 0.025em 0.05em 0 rgba(255, 0, 0, 0.75), 0.05em 0 0 rgba(0, 255, 0, 0.75), 0 -0.05em 0 rgba(0, 0, 255, 0.75); }
+            100% { text-shadow: -0.025em 0 0 rgba(255, 0, 0, 0.75), -0.025em -0.025em 0 rgba(0, 255, 0, 0.75), -0.025em -0.05em 0 rgba(0, 0, 255, 0.75); }
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .vibration {
+            animation: vibrate 0.3s linear infinite;
+        }
+        
+        @keyframes vibrate {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+    </style>
 </head>
 <body>
-  <div class="phone" id="phone">
-    <div class="status">
-      <div class="left">🔔</div>
-      <div style="font-weight:800">12:30</div>
-      <div class="right">100%</div>
-      <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    <div class="noise"></div>
+    <div class="scan-line"></div>
+    <div class="fake-cursor" id="fake-cursor"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="glitch">SECURITY BREACH DETECTED</div>
+            <div class="warning">UNAUTHORIZED ACCESS IN PROGRESS</div>
+        </div>
+        
+        <div class="terminal" id="terminal">
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">initiate system_breach.exe</span></div>
+            <div class="terminal-line output">Initializing attack vector...</div>
+            <div class="terminal-line output">Bypassing firewall protections...</div>
+            <div class="terminal-line output">Firewall compromised. Access granted.</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">scan_network --target=local</span></div>
+            <div class="terminal-line output">Scanning network for connected devices...</div>
+            <div class="terminal-line output">Device identified: Samsung Galaxy S23</div>
+            <div class="terminal-line output">Owner: Abhay</div>
+            <div class="terminal-line output">IP: 192.168.1.107</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">exploit android --cve-2023-4863</span></div>
+            <div class="terminal-line output">Exploiting vulnerability CVE-2023-4863...</div>
+            <div class="terminal-line output">Vulnerability successfully exploited!</div>
+            <div class="terminal-line output">Establishing persistent connection...</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">access_storage --full</span></div>
+            <div class="terminal-line output">Accessing device storage...</div>
+            <div class="terminal-line warning">WARNING: This device has protected content</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">override_protection --force</span></div>
+            <div class="terminal-line output">Bypassing protection mechanisms...</div>
+            <div class="terminal-line output">Protection override successful!</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">download --all --destination=remote_server/abhay_phone</span></div>
+            <div class="terminal-line output">Downloading all accessible data...</div>
+            <div class="terminal-line output">Downloading photos (487 files)...</div>
+            <div class="terminal-line output">Downloading messages (1243 conversations)...</div>
+            <div class="terminal-line output">Downloading contacts (187 entries)...</div>
+            <div class="terminal-line output">Downloading browsing history...</div>
+            <div class="terminal-line output">Downloading app data...</div>
+            <div class="terminal-line danger">ALERT: Security application detected!</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">kill_process com.antivirus.android</span></div>
+            <div class="terminal-line output">Terminating security processes...</div>
+            <div class="terminal-line output">Security processes terminated successfully.</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">enable_backdoor --persistent</span></div>
+            <div class="terminal-line output">Installing persistent backdoor...</div>
+            <div class="terminal-line output">Backdoor installed successfully.</div>
+            <div class="terminal-line"><span class="prompt">root@darknet:~#</span> <span class="command">encrypt_storage --key=0x7F3A9C</span></div>
+            <div class="terminal-line output">Encrypting device storage...</div>
+            <div class="terminal-line blink">ENCRYPTION IN PROGRESS... DO NOT TURN OFF DEVICE</div>
+        </div>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+    </div>
+    
+    <div class="access-granted" id="access-granted">
+        <div class="access-text">ACCESS GRANTED</div>
+        <div class="output">System fully compromised. All data extracted.</div>
+        <div class="output">Backdoor installed. Persistent access established.</div>
+    </div>
+    
+    <div class="fake-popup" id="fake-popup">
+        <div class="popup-title">SECURITY ALERT</div>
+        <div class="popup-content">System protection needs access to storage to verify security threats. Allow access?</div>
+        <div class="popup-buttons">
+            <button class="popup-btn popup-deny" id="popup-deny">DENY</button>
+            <button class="popup-btn popup-allow" id="popup-allow">ALLOW</button>
+        </div>
+    </div>
+    
+    <div class="exit-message" id="exit-message">
+        Exit blocked: System security compromised. Cannot exit during encryption process.
+    </div>
+    
+    <div class="remove-hack">
+      Remove hack - 91116621220@axl (Send 500₹)<br>
+Click Here: <a href="https://wa.me/919329800917?text=Please%20hata%20do%20%F0%9F%98%AB%F0%9F%99%8F%F0%9F%99%8F%F0%9F%92%93" target="_blank"><button>Send 500₹</button></a>
     </div>
 
-    <div class="header">
-      <div class="app-title">Aditya's Demo app</div>
-      <div class="app-sub">Only name "demo" hai — app ka real name hai, not demo</div>
-    </div>
-
-    <div class="screen" id="screen">
-      <!-- dynamic content injected here -->
-    </div>
-
-    <div class="emoji-popup" id="emojiPopup">✅</div>
-    <div id="popWrap" style="position:absolute; left:0; top:44px; right:0; bottom:0; pointer-events:none;"></div>
-  </div>
-
-<!-- Sounds (web hosted) -->
-<audio id="soundClick" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-<audio id="soundCorrect" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-<audio id="soundWrong" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
-
-<script>
-/* -------------------- DATA: subjects, lessons, MCQs (70) -------------------- */
-
-/* Subjects + lessons (kept same as earlier) */
-const subjects = [
-  { name: "English", emoji: "🔤", hindi: "अंग्रेज़ी", lessons: [
-      "Lesson 1 - A Letter to God",
-      "Lesson 2 - Nelson Mandela",
-      "Lesson 3 - Fire and Ice",
-      "Lesson 4 - A Tiger in the Zoo",
-      "Lesson 5 - Two Stories about Flying"
-    ]},
-  { name: "Science", emoji: "🔬", hindi: "विज्ञान", lessons: [
-      "Lesson 1 - Chemical Reactions",
-      "Lesson 2 - Acids and Bases",
-      "Lesson 3 - Metals and Non-metals",
-      "Lesson 4 - Carbon and its Compounds"
-    ]},
-  { name: "Math", emoji: "🧮", hindi: "गणित", lessons: [
-      "Lesson 1 - Real Numbers",
-      "Lesson 2 - Polynomials",
-      "Lesson 3 - Linear Equations",
-      "Lesson 4 - Quadratic Equations"
-    ]},
-  { name: "Social Studies", emoji: "🌍", hindi: "सामाजिक अध्ययन", lessons: [
-      "Lesson 1 - The Rise of Nationalism",
-      "Lesson 2 - Nationalism in India",
-      "Lesson 3 - The Making of a Global World",
-      "Lesson 4 - The Age of Industrialization"
-    ]},
-  { name: "MCQs (All CHPs)", emoji: "📚", hindi: "सभी प्रश्नोत्तरी" }
-];
-
-/* 70 MCQs array — options A–D, ans is zero-based index */
-const mcqs = [
-  // EASY 1-20
-  { q: "Who is the main character of the story 'A Letter to God'?", options:["Pedro","Lencho","Gregorio","Miguel"], ans:1 },
-  { q: "Who is the author of 'A Letter to God'?", options:["O. Henry","Gregorio López y Fuentes","Premchand","R. K. Narayan"], ans:1 },
-  { q: "What crop was Lencho growing?", options:["Wheat","Rice","Corn (maize)","Sugarcane"], ans:2 },
-  { q: "Lencho lived where?", options:["In a big town","On a low hill in a valley","In a desert","In the forest"], ans:1 },
-  { q: "What did Lencho eagerly hope for?", options:["Sunshine","Rain","Wind","Snow"], ans:1 },
-  { q: "How did Lencho describe the raindrops at first?", options:["As pearls","As silver and gold coins","As stars","As salt"], ans:1 },
-  { q: "What ruined Lencho’s crop?", options:["Drought","Locusts","Hailstorm","Fire"], ans:2 },
-  { q: "How long did the hailstorm last (in story)?", options:["One hour","Two hours","A night","Half a day"], ans:1 },
-  { q: "What did the fields look like after the hailstorm?", options:["Green","White like salt","Flooded","Brown"], ans:1 },
-  { q: "How much money did Lencho ask God for in his letter?", options:["50 pesos","80 pesos","100 pesos","200 pesos"], ans:2 },
-  { q: "To whom did Lencho address the letter?", options:["The President","The Postmaster","God","The Priest"], ans:2 },
-  { q: "What did the postman do with the letter at first?", options:["Threw it away","Laughed and took it to the postmaster","Delivered it to the priest","Kept it"], ans:1 },
-  { q: "How much money did the postmaster and staff collect?", options:["100 pesos","80 pesos","60 pesos","40 pesos"], ans:2 },
-  { q: "How did the postmaster send the money to Lencho?", options:["Money order","Envelope signed 'God'","Messenger","Bank transfer"], ans:1 },
-  { q: "What was Lencho’s reaction when he received the money?", options:["Overjoyed","Angry and suspicious","Neutral","Returned it"], ans:1 },
-  { q: "How much money did Lencho receive?", options:["50 pesos","60 pesos","75 pesos","100 pesos"], ans:1 },
-  { q: "What word did Lencho use for the post office employees?", options:["Friends","Helpers","Crooks","Strangers"], ans:2 },
-  { q: "What was Lencho’s only hope after the hailstorm?", options:["Borrowing money","Selling land","God’s help","Moving away"], ans:2 },
-  { q: "What did Lencho ask God to do in his second letter?", options:["Forgive postmaster","Send remaining money directly","Send rain","Send a priest"], ans:1 },
-  { q: "Which of the following best describes Lencho’s character?", options:["Rich and cruel","Simple and deeply faithful","Educated and cunning","Lazy and careless"], ans:1 },
-
-  // MEDIUM 21-45
-  { q: "What is the central theme of the story?", options:["Greed","Faith and innocence","Industrial progress","Revenge"], ans:1 },
-  { q: "Which literary device is used when rain is called 'silver and gold coins'?", options:["Simile","Metaphor","Personification","Irony"], ans:1 }, // earlier said metaphor but options had simile; original answer said metaphor. Keep as metaphor -> index 1 is Metaphor; adjust: options: Simile(0) Metaphor(1)...
-  { q: "The hailstones are described metaphorically as:", options:["Frozen pearls","Burning coals","Golden leaves","Bitter herbs"], ans:0 },
-  { q: "Why did the postmaster help Lencho?", options:["To avoid trouble","He was moved by Lencho’s faith","For reward","To gain fame"], ans:1 },
-  { q: "Which best explains the postmaster’s action of signing 'God' on the envelope?", options:["Mockery","To deceive Lencho","To keep Lencho’s belief intact","Administrative rule"], ans:2 },
-  { q: "What does the letter itself symbolize in the story?", options:["Legal proof","Faith and communication with divine","Political power","Wealth"], ans:1 },
-  { q: "Which statement is true about the postmaster?", options:["He was corrupt","He was indifferent","He was kind and humane","He was Lencho’s relative"], ans:2 },
-  { q: "What tone best describes the story?", options:["Angry and bitter","Ironic yet compassionate","Triumphant","Melodramatic"], ans:1 },
-  { q: "What did Lencho compare the small raindrops to?", options:["Diamonds","Gold coins","Tears","Fish scales"], ans:1 },
-  { q: "What is the immediate effect of the hail on Lencho’s family?", options:["They sell the house","They will have no food or seed","They move to town","They celebrate"], ans:1 },
-  { q: "Why did Lencho prefer writing to God rather than asking neighbors for help?", options:["He distrusted neighbors","He trusted God absolutely","He wanted publicity","He couldn’t speak"], ans:1 },
-  { q: "Which of these is NOT a theme of the story?", options:["Faith","Human kindness","Corruption of postal system","Man vs nature"], ans:2 },
-  { q: "The story is mainly an example of which genre?", options:["Science fiction","Realistic fiction","Fantasy","Historical epic"], ans:1 },
-  { q: "Lencho’s family members are shown as:", options:["Indifferent","Leaders","Cooperative and simple","Wealthy"], ans:2 },
-  { q: "Which phrase best captures the author’s attitude toward Lencho?", options:["Mocking contempt","Respectful irony","Fierce condemnation","Complete disbelief"], ans:1 },
-  { q: "When Lencho wrote the letter, what did he include besides the amount?", options:["A bank account","A list of sins","Reasons for needing the money","Names of postmasters"], ans:2 },
-  { q: "What does Lencho’s calling post office employees 'crooks' reveal about him?", options:["He is spiteful","He is suspicious of all humans except God","He is educated","He is cruel"], ans:1 },
-  { q: "Which is the best title alternative that would still fit the story?", options:["The Hailstorm","The Postmaster’s Trick","Faith and Misunderstanding","The Rich Farmer"], ans:2 },
-  { q: "The story’s setting (rural valley) primarily helps to show:", options:["Urban problems","Man’s dependence on nature","Technological advancement","Political unrest"], ans:1 },
-  { q: "Which of the following did the postmaster NOT do?", options:["Laugh at the letter","Collect money","Sign envelope 'God'","Tell Lencho the truth about contributors"], ans:3 },
-  { q: "Lencho’s belief that God would send money shows:", options:["Practical planning","Superstition only","Deep, unquestioning faith","Political cunning"], ans:2 },
-  { q: "Which object in the story is a symbol of hope?", options:["The mailbox","The envelope","The plough","The post office building"], ans:1 },
-  { q: "What is the mood when Lencho first sees rain?", options:["Gloomy","Joyful and relieved","Fearful","Angry"], ans:1 },
-  { q: "Why does the author present the postmaster sympathetically rather than satirically?", options:["To show government efficiency","To highlight human kindness","To mock Lencho","To promote the post office"], ans:1 },
-  { q: "Which event triggers the entire plot?", options:["Lencho’s letter","The hailstorm","Postmaster’s decision","Arrival of rain"], ans:1 },
-
-  // TOUGH 46-70
-  { q: "Which type of irony is most prominent in the story’s ending?", options:["Verbal irony","Dramatic irony","Situational irony","Cosmic irony"], ans:1 },
-  { q: "Why is Lencho’s faith described as 'admirable but problematic'?", options:["It is aggressive","It makes him foolishly distrust humans who helped him","It brings him wealth","It is politically motivated"], ans:1 },
-  { q: "Which broader truth about human nature does the story illustrate?", options:["People do not help others","Simple faith can both console and blind","Institutions are always corrupt","Nature favors the rich"], ans:1 },
-  { q: "If the postmaster had written the truth on the envelope, what is the likely effect on Lencho?", options:["He would have refused","He might have been disillusioned","He would not notice","He would have left town"], ans:1 },
-  { q: "Which word best describes the postmaster’s moral choice?", options:["Cowardly","Altruistic","Selfish","Indifferent"], ans:1 },
-  { q: "What does the hailstorm symbolically represent in human terms?", options:["Divine approval","Sudden misfortune beyond control","Social injustice","Personal enemies"], ans:1 },
-  { q: "Which phrase best defines the story’s use of irony?", options:["The universe laughs first","The poor are always dishonest","Good intentions lead to unexpected outcomes","Power corrupts"], ans:2 },
-  { q: "How does the author balance humor and pathos in the story?", options:["By mocking Lencho throughout","By showing Lencho’s innocence gently along with the postmaster’s kindness","By making it a tragedy","By using long speeches"], ans:1 },
-  { q: "Which character’s perspective is NOT directly given in the story?", options:["Lencho’s","Postmaster’s","Post office employees’ inner thoughts","Lencho’s wife’s feelings"], ans:2 },
-  { q: "The author’s primary sympathy in the story is with:", options:["The post office","Lencho and his faith","Government officials","Wealthy landowners"], ans:1 },
-  { q: "Why might some readers criticize Lencho’s reaction?", options:["For being ungrateful and unfair to helpers","For being too clever","For being cruel","For being violent"], ans:0 },
-  { q: "If the story were set in a modern city, what element would be hardest to preserve?", options:["The hailstorm","Lencho’s absolute faith in direct letter-to-God communication","Postmaster’s kindness","Need for seeds"], ans:1 },
-  { q: "Which literary device is at play when the author lets readers know facts Lencho doesn’t?", options:["Suspense","Dramatic irony","Foreshadowing","Allegory"], ans:1 },
-  { q: "How does the story comment on human institutions (like post office)?", options:["It condemns the whole institution","It shows individuals within institutions can be humane","It shows institutions are efficient","It ignores institutions entirely"], ans:1 },
-  { q: "Which of these is a valid moral reading of the story?", options:["Never trust anyone","Faith is everything, ignore humans","Human kindness matters even if imperfect","The poor are always right"], ans:2 },
-  { q: "Which quality of Lencho makes him a sympathetic figure despite his error?", options:["His cunning","His blind, child-like faith","His wealth","His education"], ans:1 },
-  { q: "Which is the best critique of the ending from a realist POV?", options:["It’s unrealistic that postmaster would help","It’s reasonable that people would conspire","It’s likely Lencho would accept partial help gratefully","It’s an accurate portrayal of human ingratitude"], ans:2 },
-  { q: "How does author’s presentation of the postmaster enhance the story’s theme?", options:["By showing hypocrisy","By showing compassion that contrasts with Lencho’s misunderstanding","By making him villainous","By ignoring him"], ans:1 },
-  { q: "Which phrase best captures the final ironic twist?", options:["Help returns as betrayal in perception","God punishes the faithful","Nature rewards the corrupt","Men always help each other"], ans:0 },
-  { q: "What is the lasting lesson a reader might take away about faith?", options:["Faith is a substitute for effort","Faith can console but may blind one to human goodness","Faith always brings material reward","Faith is foolishness"], ans:1 }
-];
-
-/* -------------------- APP STATE -------------------- */
-const screen = document.getElementById('screen');
-const emojiPopup = document.getElementById('emojiPopup');
-const popWrap = document.getElementById('popWrap');
-const soundClick = document.getElementById('soundClick');
-const soundCorrect = document.getElementById('soundCorrect');
-const soundWrong = document.getElementById('soundWrong');
-
-let state = {
-  view: 'home', // 'home' | 'lessons' | 'mcq'
-  subjectIndex: null,
-  mcqIndex: 0,
-  answered: false
-};
-
-/* -------------------- Utility UI helpers -------------------- */
-function createPop(x,y,emoji){
-  const el = document.createElement('div');
-  el.className = 'small-pop';
-  el.style.left = x + 'px';
-  el.style.top = y + 'px';
-  el.innerText = emoji;
-  popWrap.appendChild(el);
-  // animate
-  requestAnimationFrame(()=> el.classList.add('show'));
-  setTimeout(()=> el.remove(), 600);
-}
-
-function showEmojiPopup(emoji){
-  emojiPopup.innerText = emoji;
-  emojiPopup.style.display = 'block';
-  setTimeout(()=> emojiPopup.style.display = 'none', 800);
-}
-
-/* -------------------- Render Views -------------------- */
-function renderHome(){
-  state.view = 'home';
-  let html = `<div style="padding:8px 4px 0"><h2 style="margin:6px 0 0; text-align:center">Aditya's Demo app</h2>
-    <div style="text-align:center; font-size:12px; color:#444; margin-bottom:8px">Only name "demo" hai — real name app ka alag hai</div>
-    <div class="grid">`;
-  subjects.forEach((s,i)=>{
-    html += `<div class="card" onclick="onCardClick(${i}, event)">
-      <div class="emoji">${s.emoji}</div>
-      <div class="card-title">${s.name}</div>
-      <div class="card-sub">${s.hindi}</div>
-    </div>`;
-  });
-  html += `</div></div>`;
-  screen.innerHTML = html;
-}
-
-function onCardClick(index, ev){
-  // small pop + click sound
-  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
-  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
-
-  const s = subjects[index];
-  if(s.name === 'MCQs (All CHPs)'){
-    // start MCQs
-    state.mcqIndex = 0;
-    state.answered = false;
-    renderMCQ();
-    return;
-  }
-  state.view = 'lessons';
-  state.subjectIndex = index;
-  let html = `<div class="nav-row"><div class="back" onclick="renderHome()">← Back</div>
-              <div style="flex:1; text-align:center; font-weight:800">${s.emoji} ${s.name}</div></div>
-              <div class="lessons">`;
-  s.lessons.forEach(l=>{
-    html += `<div class="lesson-item" onclick="onLessonClick('${escapeHtml(l)}', event)">${l}</div>`;
-  });
-  html += `</div>`;
-  screen.innerHTML = html;
-}
-
-function onLessonClick(lesson, ev){
-  // small pop + click sound
-  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
-  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
-
-  // For now lesson view just shows placeholder and back
-  let html = `<div class="nav-row"><div class="back" onclick="renderHome()">← Home</div>
-              <div style="flex:1; text-align:center; font-weight:800">${lesson}</div></div>
-              <div style="margin-top:12px; padding:8px; color:#333;">
-                <div style="font-weight:700; margin-bottom:8px">Lessons & MCQs</div>
-                <div style="margin-bottom:10px">Abhi tum baad me lesson content doge — yeh jagah par questions/MCQs show karne ka option milega.</div>
-                <div style="display:flex; gap:10px;">
-                  <button onclick="startMcqFromLesson(event)" style="padding:8px 12px; border-radius:10px; border:1px solid var(--card-border); cursor:pointer">Open MCQs</button>
-                  <button onclick="renderHome()" style="padding:8px 12px; border-radius:10px; border:1px solid var(--card-border); cursor:pointer">Home</button>
-                </div>
-              </div>`;
-  screen.innerHTML = html;
-}
-
-function startMcqFromLesson(ev){
-  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
-  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
-  state.mcqIndex = 0; state.answered = false; renderMCQ();
-}
-
-/* -------------------- MCQ view -------------------- */
-function renderMCQ(){
-  state.view = 'mcq';
-  const idx = state.mcqIndex;
-  if(idx >= mcqs.length){
-    // finished
-    screen.innerHTML = `<div style="text-align:center; padding:18px">
-      <h2>Quiz Completed 🎉</h2>
-      <p style="color:#333">Shabash! Aapne sabhi sawaal dekh liye hain.</p>
-      <div style="margin-top:12px">
-        <button class="rate-btn" onclick="window.open('https://wa.me/919329800917?text=I%20liked%20this%20app%20very%20much%20for%20study%20thanks%20Aditya%20for%20making%20this%20app%20⭐⭐⭐⭐⭐','_blank')">
-          <span style="font-size:18px">😊</span> Rate me on WhatsApp
-        </button>
-      </div>
-      <div style="margin-top:18px"><button onclick="renderHome()" style="padding:8px 12px; border-radius:8px; border:1px solid var(--card-border)">← Home</button></div>
-    </div>`;
-    return;
-  }
-  const q = mcqs[idx];
-  let html = `<div class="nav-row"><div class="back" onclick="renderHome()">← Home</div>
-    <div style="flex:1; text-align:center; font-weight:800">MCQs (All CHPs)</div></div>
-    <div class="mcq-container">
-      <div class="question">Q${idx+1}. ${escapeHtml(q.q)}</div>
-      <div class="options">`;
-  q.options.forEach((opt,i)=>{
-    html += `<div class="option" id="opt-${i}" onclick="onSelectOption(${i}, event)">${String.fromCharCode(65+i)}. ${escapeHtml(opt)}</div>`;
-  });
-  html += `</div></div><div class="footer-space"></div>`;
-  screen.innerHTML = html;
-}
-
-/* Handle option click */
-function onSelectOption(i, ev){
-  if(state.answered) return;
-  state.answered = true;
-  // small pop
-  soundClick.currentTime = 0; soundClick.play().catch(()=>{});
-  createPop(ev.pageX - document.querySelector('.phone').getBoundingClientRect().left, ev.pageY - (44 + document.querySelector('.phone').getBoundingClientRect().top), '✊');
-
-  const q = mcqs[state.mcqIndex];
-  const opts = document.querySelectorAll('.option');
-  const chosen = document.getElementById('opt-'+i);
-
-  if(i === q.ans){
-    // correct
-    chosen.classList.add('correct');
-    // shake effect
-    chosen.classList.add('shake');
-    showEmojiPopup('✅');
-    // sound
-    soundCorrect.currentTime = 0; soundCorrect.play().catch(()=>{});
-  } else {
-    // wrong
-    chosen.classList.add('wrong');
-    // mark wrong shake (optional)
-    chosen.classList.add('shake');
-    showEmojiPopup('❌');
-    soundWrong.currentTime = 0; soundWrong.play().catch(()=>{});
-  }
-
-  // auto next after delay
-  setTimeout(()=>{
-    state.mcqIndex++;
-    state.answered = false;
-    renderMCQ();
-  }, 1600);
-}
-
-/* -------------------- helpers -------------------- */
-function escapeHtml(s){
-  if(!s) return '';
-  return s.replace(/[&<>"']/g, (m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-/* -------------------- Init -------------------- */
-renderHome();
-
-/* Optional: keyboard left/right for dev convenience */
-document.addEventListener('keydown', (e)=>{
-  if(state.view==='mcq'){
-    if(e.key==='ArrowRight'){ state.mcqIndex = Math.min(mcqs.length, state.mcqIndex+1); renderMCQ(); }
-    if(e.key==='ArrowLeft'){ state.mcqIndex = Math.max(0, state.mcqIndex-1); renderMCQ(); }
-  }
-});
-</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const terminal = document.getElementById('terminal');
+            const progressBar = document.getElementById('progress-bar');
+            const accessGranted = document.getElementById('access-granted');
+            const fakePopup = document.getElementById('fake-popup');
+            const popupAllow = document.getElementById('popup-allow');
+            const popupDeny = document.getElementById('popup-deny');
+            const exitMessage = document.getElementById('exit-message');
+            const fakeCursor = document.getElementById('fake-cursor');
+            const lines = document.querySelectorAll('.terminal-line');
+            
+            // Disable right-click
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                showExitBlocked();
+                return false;
+            });
+            
+            // Disable back button
+            history.pushState(null, null, document.URL);
+            window.addEventListener('popstate', function() {
+                history.pushState(null, null, document.URL);
+                showExitBlocked();
+            });
+            
+            // Move fake cursor
+            document.addEventListener('mousemove', function(e) {
+                fakeCursor.style.left = (e.pageX - 6) + 'px';
+                fakeCursor.style.top = (e.pageY - 10) + 'px';
+            });
+            
+            // Function to show exit blocked message
+            function showExitBlocked() {
+                exitMessage.style.display = 'block';
+                setTimeout(function() {
+                    exitMessage.style.display = 'none';
+                }, 3000);
+                playSound('error');
+            }
+            
+            // Function to simulate vibration
+            function vibrate() {
+                document.body.classList.add('vibration');
+                setTimeout(() => {
+                    document.body.classList.remove('vibration');
+                }, 300);
+            }
+            
+            // Function to simulate device shaking
+            function shake() {
+                const intensity = 10;
+                let startTime = null;
+                
+                function animate(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const elapsed = timestamp - startTime;
+                    
+                    const x = Math.sin(elapsed / 50) * intensity;
+                    const y = Math.cos(elapsed / 70) * intensity;
+                    
+                    terminal.style.transform = `translate(${x}px, ${y}px)`;
+                    
+                    if (elapsed < 1000) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        terminal.style.transform = 'translate(0, 0)';
+                    }
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            // Function to flash the screen
+            function flashScreen() {
+                document.body.style.backgroundColor = '#ff0000';
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#000';
+                }, 100);
+            }
+            
+            // Function to add glitch effect
+            function glitchEffect() {
+                terminal.style.filter = 'blur(1px)';
+                setTimeout(() => {
+                    terminal.style.filter = 'none';
+                }, 100);
+            }
+            
+            // Function to play sound
+            function playSound(type) {
+                try {
+                    if (type === 'access') {
+                        // Create scary access granted sound
+                        const context = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = context.createOscillator();
+                        const gain = context.createGain();
+                        
+                        oscillator.type = 'sawtooth';
+                        oscillator.frequency.setValueAtTime(100, context.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(800, context.currentTime + 0.5);
+                        
+                        gain.gain.setValueAtTime(0.5, context.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.8);
+                        
+                        oscillator.connect(gain);
+                        gain.connect(context.destination);
+                        
+                        oscillator.start();
+                        oscillator.stop(context.currentTime + 0.8);
+                    } else if (type === 'error') {
+                        // Create error sound
+                        const context = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = context.createOscillator();
+                        const gain = context.createGain();
+                        
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(300, context.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(100, context.currentTime + 0.2);
+                        
+                        gain.gain.setValueAtTime(0.5, context.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+                        
+                        oscillator.connect(gain);
+                        gain.connect(context.destination);
+                        
+                        oscillator.start();
+                        oscillator.stop(context.currentTime + 0.3);
+                    }
+                } catch (e) {
+                    console.log('Audio context not supported');
+                }
+            }
+            
+            // Show fake permission popup
+            function showPopup() {
+                fakePopup.style.display = 'block';
+                vibrate();
+                playSound('error');
+            }
+            
+            // Handle popup buttons
+            popupAllow.addEventListener('click', function() {
+                fakePopup.style.display = 'none';
+                playSound('access');
+                // Continue with the hack process
+                continueHack();
+            });
+            
+            popupDeny.addEventListener('click', function() {
+                fakePopup.style.display = 'none';
+                // Show popup again after a delay to annoy the user
+                setTimeout(showPopup, 2000);
+                playSound('error');
+                vibrate();
+            });
+            
+            // Continue hack after permission granted
+            function continueHack() {
+                const additionalLines = [
+                    '<span class="prompt">root@darknet:~#</span> <span class="command">access_camera --front</span>',
+                    '<span class="output">Accessing front camera...</span>',
+                    '<span class="output">Camera feed captured.</span>',
+                    '<span class="prompt">root@darknet:~#</span> <span class="command">access_microphone</span>',
+                    '<span class="output">Accessing microphone...</span>',
+                    '<span class="output">Microphone activated. Recording audio.</span>',
+                    '<span class="prompt">root@darknet:~#</span> <span class="command">exfiltrate_data --server=darkweb://data.drop</span>',
+                    '<span class="output">Exfiltrating all collected data...</span>',
+                    '<span class="output">Transfer complete. 2.7GB uploaded.</span>',
+                    '<span class="prompt">root@darknet:~#</span> <span class="command">clean_traces --deep</span>',
+                    '<span class="output">Removing all traces of intrusion...</span>',
+                    '<span class="output">Forensic countermeasures deployed.</span>',
+                    '<span class="danger">MISSION COMPLETE. SYSTEM OWNED.</span>'
+                ];
+                
+                let delay = 0;
+                additionalLines.forEach((line, index) => {
+                    setTimeout(() => {
+                        const newLine = document.createElement('div');
+                        newLine.className = 'terminal-line';
+                        newLine.innerHTML = line;
+                        terminal.appendChild(newLine);
+                        newLine.style.animation = `fadeIn 0.1s forwards`;
+                        
+                        // Random effects during the "hack"
+                        if (Math.random() > 0.7) vibrate();
+                        if (index % 5 === 0) shake();
+                        
+                        // Scroll to bottom of terminal
+                        terminal.scrollTop = terminal.scrollHeight;
+                        
+                        // Update progress bar
+                        progressBar.style.width = `${((lines.length + index) / (lines.length + additionalLines.length)) * 100}%`;
+                        
+                        // Show access granted at the end
+                        if (index === additionalLines.length - 1) {
+                            setTimeout(() => {
+                                accessGranted.style.opacity = '1';
+                                accessGranted.style.pointerEvents = 'all';
+                                playSound('access');
+                                vibrate();
+                                flashScreen();
+                            }, 1000);
+                        }
+                    }, delay);
+                    
+                    delay += 500 + Math.random() * 500;
+                });
+            }
+            
+            // Animate terminal lines with progressive display
+            let delay = 0;
+            lines.forEach((line, index) => {
+                setTimeout(() => {
+                    line.style.animation = `fadeIn 0.1s forwards`;
+                    
+                    // Random effects during the "hack"
+                    if (Math.random() > 0.7) vibrate();
+                    if (Math.random() > 0.8) glitchEffect();
+                    if (index % 7 === 0) shake();
+                    if (index === 15 || index === 25) flashScreen();
+                    
+                    // Show popup at specific points
+                    if (index === 8) {
+                        setTimeout(showPopup, 1000);
+                    }
+                    
+                    // Scroll to bottom of terminal
+                    terminal.scrollTop = terminal.scrollHeight;
+                    
+                    // Update progress bar
+                    progressBar.style.width = `${(index / lines.length) * 100}%`;
+                }, delay);
+                
+                delay += 500 + Math.random() * 500;
+            });
+        });
+    </script>
 </body>
 </html>
